@@ -1,4 +1,4 @@
-const CACHE_NAME = "keyword-news-launcher-v4";
+const CACHE_NAME = "keyword-news-launcher-v5";
 const ASSETS = [
   "./",
   "index.html",
