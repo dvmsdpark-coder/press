@@ -310,7 +310,7 @@ for (const tab of document.querySelectorAll(".tab")) {
 }
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+  navigator.serviceWorker.register("service-worker.js").catch(() => {});
 }
 
 renderTopics();
