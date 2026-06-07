@@ -1,5 +1,4 @@
 const DEFAULT_CONFIG = {
-  refreshTimes: ["08:00", "12:00", "18:00"],
   topics: [
     { name: "가축전염병 일반", keywords: ["가축전염병", "가축전염병예방법"] },
     { name: "구제역", keywords: ["구제역"] },
@@ -10,25 +9,17 @@ const DEFAULT_CONFIG = {
   ],
 };
 
-const STORAGE_KEY = "news-watch-local-config-v1";
-const LOG_KEY = "news-watch-refresh-log-v1";
-const LAST_SLOT_KEY = "news-watch-last-slot-v1";
+const STORAGE_KEY = "keyword-news-launcher-config-v2";
 
 const state = {
   config: loadConfig(),
-  refreshLog: loadRefreshLog(),
-  currentSlot: null,
 };
 
 const els = {
   status: document.querySelector("#status"),
-  refreshButton: document.querySelector("#refreshButton"),
-  searchButton: document.querySelector("#searchButton"),
   openAllButton: document.querySelector("#openAllButton"),
+  editButton: document.querySelector("#editButton"),
   results: document.querySelector("#results"),
-  refreshLog: document.querySelector("#refreshLog"),
-  schedule: document.querySelector("#schedule"),
-  nextRefresh: document.querySelector("#nextRefresh"),
   topicEditor: document.querySelector("#topicEditor"),
   addTopicButton: document.querySelector("#addTopicButton"),
   saveConfigButton: document.querySelector("#saveConfigButton"),
@@ -40,16 +31,61 @@ function cloneConfig(config) {
   return JSON.parse(JSON.stringify(config));
 }
 
+function safeGetItem(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetItem(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeKeyword(keyword) {
+  return String(keyword ?? "").trim().replace(/\s+/g, " ");
+}
+
+function uniqueKeywords(keywords) {
+  const seen = new Set();
+  const result = [];
+  for (const keyword of keywords.map(normalizeKeyword).filter(Boolean)) {
+    const key = keyword.toLocaleLowerCase("ko-KR");
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(keyword);
+    }
+  }
+  return result;
+}
+
+function normalizeTopics(topics) {
+  const result = [];
+  for (const topic of topics || []) {
+    const name = String(topic.name ?? "").trim();
+    const keywords = uniqueKeywords(topic.keywords || []);
+    if (name && keywords.length) {
+      result.push({ name, keywords });
+    }
+  }
+  return result.length ? result : cloneConfig(DEFAULT_CONFIG).topics;
+}
+
 function loadConfig() {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  const saved = safeGetItem(STORAGE_KEY);
   if (!saved) return cloneConfig(DEFAULT_CONFIG);
   try {
     const parsed = JSON.parse(saved);
     return {
       ...cloneConfig(DEFAULT_CONFIG),
       ...parsed,
-      refreshTimes: Array.isArray(parsed.refreshTimes) ? parsed.refreshTimes : DEFAULT_CONFIG.refreshTimes,
-      topics: Array.isArray(parsed.topics) && parsed.topics.length ? parsed.topics : DEFAULT_CONFIG.topics,
+      topics: normalizeTopics(parsed.topics),
     };
   } catch {
     return cloneConfig(DEFAULT_CONFIG);
@@ -57,101 +93,23 @@ function loadConfig() {
 }
 
 function saveConfig(config) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-}
-
-function loadRefreshLog() {
-  try {
-    return JSON.parse(localStorage.getItem(LOG_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveRefreshLog() {
-  localStorage.setItem(LOG_KEY, JSON.stringify(state.refreshLog.slice(0, 30)));
+  return safeSetItem(STORAGE_KEY, JSON.stringify(config));
 }
 
 function setStatus(message) {
   els.status.textContent = message;
 }
 
-function formatDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function allKeywords() {
+  return uniqueKeywords(state.config.topics.flatMap((topic) => topic.keywords));
 }
 
-function formatTime(date = new Date()) {
-  return date.toLocaleString("ko-KR", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
-
-function minutesOf(time) {
-  const [hour, minute] = time.split(":").map(Number);
-  return hour * 60 + minute;
-}
-
-function minutesNow(date = new Date()) {
-  return date.getHours() * 60 + date.getMinutes();
-}
-
-function getCurrentSlot(date = new Date()) {
-  const now = minutesNow(date);
-  const sorted = [...state.config.refreshTimes].sort((a, b) => minutesOf(a) - minutesOf(b));
-  let selected = sorted[sorted.length - 1];
-  for (const time of sorted) {
-    if (now >= minutesOf(time)) selected = time;
-  }
-  return `${formatDateKey(date)} ${selected}`;
-}
-
-function getNextRefreshText(date = new Date()) {
-  const now = minutesNow(date);
-  const sorted = [...state.config.refreshTimes].sort((a, b) => minutesOf(a) - minutesOf(b));
-  const nextToday = sorted.find((time) => minutesOf(time) > now);
-  if (nextToday) return `다음 자동 갱신 ${nextToday}`;
-  return `다음 자동 갱신 내일 ${sorted[0]}`;
-}
-
-function refresh(reason = "manual") {
-  const slot = getCurrentSlot();
-  state.currentSlot = slot;
-  localStorage.setItem(LAST_SLOT_KEY, slot);
-
-  const entry = {
-    slot,
-    reason,
-    refreshedAt: new Date().toISOString(),
-    topicCount: state.config.topics.length,
-    keywordCount: state.config.topics.reduce((sum, topic) => sum + topic.keywords.length, 0),
-  };
-  state.refreshLog = [entry, ...state.refreshLog.filter((item) => item.slot !== slot)].slice(0, 30);
-  saveRefreshLog();
-  render();
-  setStatus(`${formatTime()} 기준으로 검색 링크를 갱신했습니다.`);
-}
-
-function maybeScheduledRefresh() {
-  const slot = getCurrentSlot();
-  const lastSlot = localStorage.getItem(LAST_SLOT_KEY);
-  if (slot !== lastSlot) {
-    refresh("scheduled");
-    return;
-  }
-  render();
-}
-
-function naverNewsUrl(keyword) {
+function naverNewsUrl(keywords) {
+  const list = uniqueKeywords(Array.isArray(keywords) ? keywords : [keywords]);
+  const query = list.length === 1 ? list[0] : list.map((keyword) => `"${keyword}"`).join(" OR ");
   const params = new URLSearchParams({
     where: "news",
-    query: keyword,
+    query,
     sort: "1",
   });
   return `https://search.naver.com/search.naver?${params.toString()}`;
@@ -165,58 +123,50 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
-function renderSchedule() {
-  els.schedule.innerHTML = state.config.refreshTimes
-    .map((time) => {
-      const isCurrent = state.currentSlot?.endsWith(time);
-      return `<span class="slot${isCurrent ? " current" : ""}">${escapeHtml(time)}</span>`;
-    })
-    .join("");
-  els.nextRefresh.textContent = getNextRefreshText();
-}
-
 function renderResults() {
-  els.results.innerHTML = state.config.topics
+  const keywords = allKeywords();
+  const total = keywords.length;
+  const allUrl = naverNewsUrl(keywords);
+
+  const allCard = `
+    <section class="bundle-card">
+      <div>
+        <span class="label">전체 묶음</span>
+        <h2>전체 키워드 ${total}개</h2>
+      </div>
+      <a class="bundle-action" href="${escapeHtml(allUrl)}" target="_blank" rel="noopener">네이버 뉴스 검색</a>
+    </section>
+  `;
+
+  const topicCards = state.config.topics
     .map((topic) => {
-      const links = topic.keywords
+      const topicUrl = naverNewsUrl(topic.keywords);
+      const chips = topic.keywords
         .map((keyword) => {
-          const url = naverNewsUrl(keyword);
-          return `
-            <a class="search-link" href="${escapeHtml(url)}" target="_blank" rel="noopener">
-              <span>${escapeHtml(keyword)}</span>
-              <small>최신순</small>
-            </a>
-          `;
+          const keywordUrl = naverNewsUrl(keyword);
+          return `<a class="keyword-chip" href="${escapeHtml(keywordUrl)}" target="_blank" rel="noopener">${escapeHtml(keyword)}</a>`;
         })
         .join("");
       return `
         <section class="topic-group">
-          <h3 class="topic-heading">${escapeHtml(topic.name)}</h3>
-          <div class="link-grid">${links}</div>
+          <div class="topic-summary">
+            <div>
+              <h3 class="topic-heading">${escapeHtml(topic.name)}</h3>
+              <span>${topic.keywords.length}개 키워드</span>
+            </div>
+            <a class="search-link compact-link" href="${escapeHtml(topicUrl)}" target="_blank" rel="noopener">
+              <span>묶음 검색</span>
+              <small>최신순</small>
+            </a>
+          </div>
+          <div class="keyword-row">${chips}</div>
         </section>
       `;
     })
     .join("");
-}
 
-function renderLog() {
-  if (!state.refreshLog.length) {
-    els.refreshLog.innerHTML = `<div class="empty">아직 갱신 기록이 없습니다.</div>`;
-    return;
-  }
-
-  els.refreshLog.innerHTML = state.refreshLog
-    .slice(0, 12)
-    .map((entry) => {
-      const reason = entry.reason === "scheduled" ? "자동" : "수동";
-      return `
-        <article class="log-item">
-          <strong>${escapeHtml(entry.slot)}</strong>
-          <span>${reason} 갱신 · 키워드 ${entry.keywordCount}개</span>
-        </article>
-      `;
-    })
-    .join("");
+  els.results.innerHTML = `${allCard}${topicCards}`;
+  setStatus(`주제 ${state.config.topics.length}개 · 전체 키워드 ${total}개`);
 }
 
 function renderTopics() {
@@ -241,22 +191,21 @@ function collectConfigFromEditor() {
       const keywords = item
         .querySelector(".topic-keywords")
         .value.split(/[,\n]/)
-        .map((keyword) => keyword.trim())
+        .map(normalizeKeyword)
         .filter(Boolean);
-      return { name, keywords };
+      return { name, keywords: uniqueKeywords(keywords) };
     })
     .filter((topic) => topic.name && topic.keywords.length);
 
   return {
     ...state.config,
-    topics,
+    topics: normalizeTopics(topics),
   };
 }
 
 function render() {
-  renderSchedule();
   renderResults();
-  renderLog();
+  renderTopics();
 }
 
 function showTab(name) {
@@ -275,32 +224,31 @@ function saveEditedConfig() {
     return;
   }
   state.config = nextConfig;
-  saveConfig(state.config);
-  renderTopics();
-  refresh("manual");
-  setStatus("키워드를 저장하고 검색 링크를 갱신했습니다.");
+  const saved = saveConfig(state.config);
+  render();
+  showTab("results");
+  setStatus(saved ? "키워드를 저장했습니다." : "저장은 제한되었지만 현재 화면에는 반영했습니다.");
 }
 
 function resetConfig() {
   state.config = cloneConfig(DEFAULT_CONFIG);
-  saveConfig(state.config);
-  renderTopics();
-  refresh("manual");
-  setStatus("기본 키워드로 되돌렸습니다.");
+  const saved = saveConfig(state.config);
+  render();
+  showTab("results");
+  setStatus(saved ? "기본 키워드로 되돌렸습니다." : "저장은 제한되었지만 기본값을 화면에 반영했습니다.");
 }
 
-function openFirstKeyword() {
-  const firstKeyword = state.config.topics.flatMap((topic) => topic.keywords)[0];
-  if (!firstKeyword) {
-    setStatus("열 수 있는 키워드가 없습니다.");
+function openAllKeywords() {
+  const keywords = allKeywords();
+  if (!keywords.length) {
+    setStatus("검색할 키워드가 없습니다.");
     return;
   }
-  window.open(naverNewsUrl(firstKeyword), "_blank", "noopener");
+  window.open(naverNewsUrl(keywords), "_blank", "noopener");
 }
 
-els.refreshButton.addEventListener("click", () => refresh("manual"));
-els.searchButton.addEventListener("click", () => refresh("manual"));
-els.openAllButton.addEventListener("click", openFirstKeyword);
+els.openAllButton.addEventListener("click", openAllKeywords);
+els.editButton.addEventListener("click", () => showTab("keywords"));
 els.addTopicButton.addEventListener("click", () => addTopicEditor());
 els.saveConfigButton.addEventListener("click", saveEditedConfig);
 els.resetConfigButton.addEventListener("click", resetConfig);
@@ -313,6 +261,4 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("service-worker.js").catch(() => {});
 }
 
-renderTopics();
-maybeScheduledRefresh();
-setInterval(maybeScheduledRefresh, 60 * 1000);
+render();

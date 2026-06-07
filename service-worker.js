@@ -1,4 +1,4 @@
-const CACHE_NAME = "news-watch-mobile-v3";
+const CACHE_NAME = "keyword-news-launcher-v4";
 const ASSETS = [
   "./",
   "index.html",
@@ -28,5 +28,21 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) {
     return;
   }
-  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+  if (event.request.mode === "navigate" || ASSETS.some((asset) => url.pathname.endsWith(asset.replace("./", "")))) {
+    event.respondWith(networkFirst(event.request));
+  }
 });
+
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    return cached || cache.match("index.html");
+  }
+}
