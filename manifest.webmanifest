@@ -1,6 +1,6 @@
 {
-  "name": "키워드 뉴스 모니터",
-  "short_name": "뉴스모니터",
+  "name": "키워드 뉴스 검색",
+  "short_name": "뉴스검색",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f4f7f6",

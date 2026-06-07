@@ -106,7 +106,7 @@ function allKeywords() {
 
 function naverNewsUrl(keywords) {
   const list = uniqueKeywords(Array.isArray(keywords) ? keywords : [keywords]);
-  const query = list.join(" | ");
+  const query = list.map((keyword) => `"${keyword.replaceAll('"', "")}"`).join(" | ");
   const params = new URLSearchParams({
     where: "news",
     query,

@@ -82,8 +82,7 @@ h2 {
 .panel,
 .bundle-card,
 .topic-item,
-.article,
-.message {
+.article {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -94,48 +93,12 @@ h2 {
   padding: 14px;
 }
 
-.schedule-card {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
-  margin-bottom: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  background: #f8fbfa;
-  border: 1px solid var(--line);
-}
-
 .label {
   display: block;
   margin-bottom: 7px;
   color: var(--muted);
   font-size: 0.8rem;
   font-weight: 750;
-}
-
-.slot-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.slot {
-  padding: 5px 9px;
-  border-radius: 999px;
-  background: #e9efed;
-  color: var(--muted);
-  font-size: 0.86rem;
-  font-weight: 780;
-}
-
-.slot.current {
-  background: var(--accent);
-  color: #fff;
-}
-
-#nextRefresh {
-  color: var(--accent-strong);
-  font-size: 0.92rem;
 }
 
 .control-row {
@@ -192,21 +155,6 @@ h2 {
   border: 1px solid var(--line);
   color: var(--accent-strong);
   font-size: 1.25rem;
-}
-
-.check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  color: var(--muted);
-  font-size: 0.92rem;
-}
-
-.check input {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--accent);
 }
 
 .status {
@@ -267,8 +215,7 @@ h2 {
 }
 
 .result-list,
-.topic-list,
-.message-list {
+.topic-list {
   display: grid;
   gap: 10px;
 }
@@ -301,9 +248,7 @@ h2 {
 
 .article,
 .search-link,
-.message,
-.topic-item,
-.log-item {
+.topic-item {
   padding: 12px;
 }
 
@@ -450,26 +395,6 @@ h2 {
 
 .remove-topic {
   color: #a33a2d;
-}
-
-.message {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-size: 0.93rem;
-  line-height: 1.45;
-}
-
-.log-item {
-  display: grid;
-  gap: 4px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-.log-item span {
-  color: var(--muted);
-  font-size: 0.86rem;
 }
 
 .loading {

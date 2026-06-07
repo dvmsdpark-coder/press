@@ -1,5 +1,5 @@
-const CACHE_NAME = "keyword-news-launcher-v5";
-const ASSETS = [
+const CACHE_NAME = "keyword-news-launcher-v6";
+const CACHE_URLS = [
   "./",
   "index.html",
   "styles.css",
@@ -8,9 +8,10 @@ const ASSETS = [
   "icon-192.svg",
   "icon-512.svg",
 ];
+const APP_SHELL_FILES = new Set(CACHE_URLS.filter((asset) => asset !== "./"));
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CACHE_URLS)));
   self.skipWaiting();
 });
 
@@ -24,11 +25,21 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") {
+    return;
+  }
+
   const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
   if (url.pathname.startsWith("/api/")) {
     return;
   }
-  if (event.request.mode === "navigate" || ASSETS.some((asset) => url.pathname.endsWith(asset.replace("./", "")))) {
+
+  const fileName = url.pathname.split("/").pop() || "index.html";
+  if (event.request.mode === "navigate" || APP_SHELL_FILES.has(fileName)) {
     event.respondWith(networkFirst(event.request));
   }
 });
