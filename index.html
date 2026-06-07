@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#157f78">
+    <title>뉴스 모니터</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Naver News Watch</p>
+          <h1>뉴스 모니터</h1>
+        </div>
+        <button class="icon-button" id="refreshButton" type="button" aria-label="새로고침">↻</button>
+      </header>
+
+      <section class="panel controls">
+        <div class="schedule-card">
+          <div>
+            <span class="label">갱신 시간</span>
+            <div class="slot-row" id="schedule"></div>
+          </div>
+          <strong id="nextRefresh"></strong>
+        </div>
+        <div class="control-row">
+          <button class="primary" id="searchButton" type="button">지금 새로고침</button>
+          <button class="secondary" id="openAllButton" type="button">네이버 뉴스 열기</button>
+        </div>
+      </section>
+
+      <section class="status" id="status" aria-live="polite">앱을 준비하는 중입니다.</section>
+
+      <nav class="tabs" aria-label="보기 전환">
+        <button class="tab is-active" data-tab="results" type="button">검색</button>
+        <button class="tab" data-tab="keywords" type="button">키워드</button>
+        <button class="tab" data-tab="history" type="button">기록</button>
+      </nav>
+
+      <section id="resultsView" class="view is-active">
+        <div id="results" class="result-list"></div>
+      </section>
+
+      <section id="keywordsView" class="view">
+        <div class="section-head">
+          <h2>검색 주제</h2>
+          <button class="secondary compact" id="addTopicButton" type="button">주제 추가</button>
+        </div>
+        <div id="topicEditor" class="topic-list"></div>
+        <div class="button-row">
+          <button class="primary full" id="saveConfigButton" type="button">키워드 저장</button>
+          <button class="secondary full" id="resetConfigButton" type="button">기본값</button>
+        </div>
+      </section>
+
+      <section id="historyView" class="view">
+        <div id="refreshLog" class="message-list"></div>
+      </section>
+    </main>
+
+    <template id="topicTemplate">
+      <article class="topic-item">
+        <div class="topic-title-row">
+          <input class="topic-name" type="text" aria-label="주제명">
+          <button class="icon-button remove-topic" type="button" aria-label="주제 삭제">×</button>
+        </div>
+        <textarea class="topic-keywords" rows="3" aria-label="키워드"></textarea>
+      </article>
+    </template>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
